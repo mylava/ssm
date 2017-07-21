@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE generatorConfiguration PUBLIC "-//mybatis.org//DTD MyBatis Generator Configuration 1.0//EN" "http://mybatis.org/dtd/mybatis-generator-config_1_0.dtd" >
+<generatorConfiguration>
+
+    <context id="context1" targetRuntime="MyBatis3">
+        <jdbcConnection driverClass="com.mysql.jdbc.Driver"
+                        connectionURL="jdbc:mysql://localhost:3306/master?useUnicode=true&amp;characterEncoding=UTF-8"
+                        userId="root" password="mysql" />
+        <!--model-->
+        <javaModelGenerator targetPackage="cn.mylava.model"
+                            targetProject="../dynamicDataSource/src/main/java" />
+        <!--Mapper.xml-->
+        <sqlMapGenerator targetPackage="mapping"
+                         targetProject="src/main/resources" />
+        <!--Mapper-->
+        <javaClientGenerator targetPackage="cn.mylava.mapper"
+                             targetProject="src/main/java" type="XMLMAPPER" />
+        <table tableName="user" />
+    </context>
+</generatorConfiguration>

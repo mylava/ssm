@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.1.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.1.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.1.xsd">
+
+    <context:component-scan base-package="cn.mylava.service"/>
+    <context:component-scan base-package="cn.mylava.mapper"/>
+
+    <context:property-placeholder location="classpath:dataSource.properties"/>
+
+
+    <bean id="springUtil" class="cn.mylava.datasource.SpringUtil" />
+
+
+    <bean id="masterDataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="url" value="${master.url}"/>
+        <property name="username" value="${master.username}"/>
+        <property name="password" value="${master.password}"/>
+        <property name="initialSize" value="1"/>
+        <property name="maxActive" value="20"/>
+        <property name="minIdle" value="1"/>
+        <property name="maxWait" value="60000"/>
+        <property name="validationQuery" value="${master.validationQuery}"/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+        <property name="testWhileIdle" value="true"/>
+        <property name="timeBetweenEvictionRunsMillis" value="60000"/>
+        <property name="minEvictableIdleTimeMillis" value="25200000"/>
+        <property name="removeAbandoned" value="true"/>
+        <property name="removeAbandonedTimeout" value="1800"/>
+        <property name="logAbandoned" value="true"/>
+        <property name="filters" value="mergeStat"/>
+    </bean>
+
+    <bean id="slaveDataSource" class="com.alibaba.druid.pool.DruidDataSource" init-method="init" destroy-method="close">
+        <property name="url" value="${slave.url}"/>
+        <property name="username" value="${slave.username}"/>
+        <property name="password" value="${slave.password}"/>
+        <property name="initialSize" value="1"/>
+        <property name="maxActive" value="20"/>
+        <property name="minIdle" value="1"/>
+        <property name="maxWait" value="60000"/>
+        <property name="validationQuery" value="${slave.validationQuery}"/>
+        <property name="testOnBorrow" value="false"/>
+        <property name="testOnReturn" value="false"/>
+        <property name="testWhileIdle" value="true"/>
+        <property name="timeBetweenEvictionRunsMillis" value="60000"/>
+        <property name="minEvictableIdleTimeMillis" value="25200000"/>
+        <property name="removeAbandoned" value="true"/>
+        <property name="removeAbandonedTimeout" value="1800"/>
+        <property name="logAbandoned" value="true"/>
+        <property name="filters" value="mergeStat"/>
+    </bean>
+
+    <bean id="dataSource" class="cn.mylava.datasource.DynamicDataSource">
+        <!-- 通过key-value的形式来关联数据源 -->
+        <property name="targetDataSources">
+            <map>
+                <entry value-ref="masterDataSource" key="masterDataSource"></entry>
+                <entry value-ref="slaveDataSource" key="slaveDataSource"></entry>
+            </map>
+        </property>
+        <property name="defaultTargetDataSource" ref="masterDataSource"/>
+    </bean>
+
+    <!-- spring和MyBatis完美整合，不需要mybatis的配置映射文件 -->
+    <bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+        <property name="dataSource" ref="dataSource" />
+        <!-- 自动扫描mapping.xml文件 -->
+        <property name="mapperLocations" value="classpath:mapping/*.xml"></property>
+    </bean>
+
+    <!-- DAO接口所在包名，Spring会自动查找其下的类 -->
+    <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+        <property name="basePackage" value="cn.mylava.mapper" />
+        <property name="sqlSessionFactoryBeanName" value="sqlSessionFactory"></property>
+    </bean>
+
+    <!-- 配置事务管理器 -->
+    <bean id="transactionManager" class="cn.mylava.datasource.SwitchDataSourceTransactionManager">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <!-- 注解方式配置事物 -->
+    <tx:annotation-driven transaction-manager="transactionManager"/>
+
+  <!--  <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate">
+        <property name="dataSource" ref="dataSource"/>
+    </bean>-->
+
+    <bean id="dataSourceSwitchAdvice" class="cn.mylava.datasource.DataSourceSwitchAdvice"/>
+
+    <tx:advice id="transactionAdvice" transaction-manager="transactionManager">
+        <tx:attributes>
+            <tx:method name="add*" propagation="REQUIRED"/>
+            <tx:method name="modify*" propagation="REQUIRED"/>
+            <tx:method name="update*" propagation="REQUIRED"/>
+            <tx:method name="delete*" propagation="REQUIRED"/>
+            <tx:method name="find*" propagation="SUPPORTS"/>
+            <tx:method name="query" propagation="SUPPORTS"/>
+        </tx:attributes>
+    </tx:advice>
+
+    <aop:config>
+        <aop:pointcut id="transactionPointcut" expression="execution(* cn.mylava.service..*.*(..))"/>
+        <aop:advisor pointcut-ref="transactionPointcut" advice-ref="transactionAdvice"/>
+        <!--<aop:advisor advice-ref="dataSourceSwitchAdvice" pointcut-ref="transactionPointcut" />-->
+    </aop:config>
+
+
+    <bean id="commonLogger" class="com.ruwe.collectlog.aspect.CommonLogger" >
+        <property name="msName" value="USER_CENTER" />
+        <property name="logType" value="HANDLER" />
+    </bean>
+
+    <aop:config>
+        <aop:aspect id="commonLogAspect" ref="commonLogger">
+            <aop:pointcut id="commonLog" expression="execution(* cn.mylava.service..*.*(..))"/>
+            <aop:around method="record" pointcut-ref="commonLog"/>
+        </aop:aspect>
+    </aop:config>
+
+
+</beans>

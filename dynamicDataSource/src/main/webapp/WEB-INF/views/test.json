@@ -1,0 +1,12 @@
+{
+  "com.ruwe.collectlog.model.BaseLog": {
+    "id": "888294870001647616",
+    "invokeTree": "cn.mylava.api.UserController.getUser",
+    "localHostName": "MacBook.lan",
+    "localIp": "192.168.199.112",
+    "logType": "CUSTOM_INFO"
+  },
+  "obj2": {
+    "commonLogger": {}
+  }
+}
